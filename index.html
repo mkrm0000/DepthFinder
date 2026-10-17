@@ -87,6 +87,23 @@
     padding:10px 20px; border-radius:999px; opacity:0; pointer-events:none; transition:.25s;
   }
   .toast.show{opacity:1; transform:translate(-50%,0)}
+
+  /* ---------- cross-check UI ---------- */
+  .cross-panel{margin-top:18px; padding-top:18px; border-top:1px dashed var(--line)}
+  .cross-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; flex-wrap:wrap}
+  .cross-head h3{margin:0; font-size:.95rem; font-weight:600; color:var(--txt); letter-spacing:.3px}
+  .cross-hint{font-size:.75rem; color:var(--mut); margin:0 0 12px}
+  .cross-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px}
+  @media (max-width:560px){ .cross-grid{grid-template-columns:1fr} }
+  .cross-col{background:#0d1626; border:1px solid var(--line); border-radius:12px; padding:14px}
+  .cross-title{font-size:.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--acc); margin-bottom:8px}
+  .cross-depth{font-size:1.5rem; font-weight:700; letter-spacing:-.5px; color:var(--txt); line-height:1.1}
+  .cross-unit{font-size:.78rem; color:var(--mut); margin-top:2px}
+  .cross-sub{font-size:.8rem; color:var(--mut); margin-top:10px; padding-top:10px; border-top:1px solid var(--line)}
+  .cross-verdict{padding:11px 14px; border-radius:10px; font-size:.88rem; font-weight:600; text-align:center; letter-spacing:.2px}
+  .cross-verdict.ok{background:rgba(46,230,168,.1); color:var(--ok); border:1px solid rgba(46,230,168,.25)}
+  .cross-verdict.err{background:rgba(255,107,107,.1); color:var(--err); border:1px solid rgba(255,107,107,.25)}
+  .cross-verdict.pending{background:#0d1626; color:var(--mut); border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -153,6 +170,17 @@
       <a id="mapLink" class="btn" target="_blank" rel="noopener">Open in Google Maps</a>
     </div>
     <p class="warn" id="warn" hidden></p>
+
+    <!-- ---------- Cross-check ---------- -->
+    <div class="cross-panel">
+      <div class="cross-head">
+        <h3>🔍 Cross-check</h3>
+        <button id="crossCheck" class="primary">Compare with GEBCO</button>
+      </div>
+      <p class="cross-hint">Queries GEBCO (NTU ODB, fallback: OpenTopoData) and compares with Xylookup. Tolerance: ±100 m.</p>
+      <div id="crossResult" hidden></div>
+    </div>
+
     <details>
       <summary>Raw JSON</summary>
       <pre id="json"></pre>
@@ -169,6 +197,11 @@
   const $ = (id) => document.getElementById(id);
   const API = "https://api.obis.org/xylookup";
   let lastJson = "", lastDepth = "";
+
+  /* ---------- cross-check state ---------- */
+  let lastLat = null, lastLon = null;
+  let lastXyDepthM = null;   // meters; positive = below sea level (per Xylookup convention)
+  let lastShoreM = null;
 
   /* ---------- mode helpers ---------- */
   function getMode() {
@@ -253,6 +286,12 @@
     minimumFractionDigits: 0
   });
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
   function fmtAreas(areas) {
     if (!areas) return "";
     if (typeof areas === "string") return areas;
@@ -328,6 +367,12 @@
     $("go").disabled = true;
     setStatus("Looking up…");
     $("result").hidden = true;
+    // reset cross-check UI for this new lookup
+    $("crossResult").hidden = true;
+    $("crossResult").innerHTML = "";
+    $("crossCheck").disabled = false;
+    lastXyDepthM = null;
+    lastShoreM = null;
 
     let lat, lon, warnings = [];
     try {
@@ -428,11 +473,140 @@
     $("mapLink").href = "https://www.google.com/maps/search/?api=1&query=" +
                         encodeURIComponent(lat + "," + lon);
 
+    // --- store state for cross-check ---
+    lastLat = lat;
+    lastLon = lon;
+    lastXyDepthM = (typeof depth === "number" && isFinite(depth)) ? depth : null;
+    lastShoreM = (typeof d.shoredistance === "number" && isFinite(d.shoredistance)) ? d.shoredistance : null;
+
     $("result").hidden = false;
+  }
+
+  /* ---------- cross-check ---------- */
+  async function fetchGebcoOdb(lat, lon) {
+    const url = "https://api.odb.ntu.edu.tw/gebco?lon=" + encodeURIComponent(lon) +
+                "&lat=" + encodeURIComponent(lat) + "&format=json";
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    try {
+        //console.log(text);
+      return parseElevation(JSON.parse(text));
+    } catch (_) {
+      const n = parseFloat(text);
+      if (isFinite(n)) return n;
+      throw new Error("Unparseable GEBCO response");
+    }
+  }
+
+  async function fetchOpenTopoData(lat, lon) {
+    const url = "https://api.opentopodata.org/v1/gebco2020?locations=" +
+                encodeURIComponent(lat) + "," + encodeURIComponent(lon);
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const z = data && data.results && data.results[0] && data.results[0].elevation;
+    if (typeof z !== "number" || !isFinite(z)) throw new Error("No elevation in OpenTopoData response");
+    return z;
+  }
+
+  function parseElevation(data) {
+    if (typeof data === "number") return data;
+    if (Array.isArray(data)) {
+      if (!data.length) throw new Error("Empty response");
+      return parseElevation(data[0]);
+    }
+    if (data && typeof data === "object") {
+      const keys = ["elevation", "depth", "z", "value", "bathymetry", "elev"];
+      for (let i = 0; i < keys.length; i++) {
+        if (typeof data[keys[i]] === "number") return data[keys[i]];
+      }
+      if (data.data !== undefined) return parseElevation(data.data);
+      if (data.result !== undefined) return parseElevation(data.result);
+      if (data.results !== undefined) return parseElevation(data.results);
+    }
+    throw new Error("Unrecognized bathymetry response");
+  }
+
+  async function fetchCrossCheckDepth(lat, lon) {
+    const sources = [
+      { name: "GEBCO (NTU ODB)", fn: function () { return fetchGebcoOdb(lat, lon); } }
+    ];
+    let lastErr = null;
+    for (let i = 0; i < sources.length; i++) {
+      try {
+        const elev = await sources[i].fn(); // negative underwater, positive on land
+        return { sourceName: sources[i].name, depth: -elev }; // positive underwater
+      } catch (e) {
+        lastErr = e;
+        console.warn("Cross-check source failed:", sources[i].name, e);
+      }
+    }
+    throw new Error(lastErr ? lastErr.message : "All cross-check sources failed");
+  }
+
+  function fmtDepthLabel(m) {
+    if (m === null || m === undefined || !isFinite(m)) return { val: "—", unit: "" };
+    if (m >= 0) return { val: nf(m, 1) + " m", unit: "below sea level" };
+    return { val: nf(-m, 1) + " m", unit: "above sea level" };
+  }
+
+  async function crossCheck() {
+    if (lastXyDepthM === null) {
+      $("crossResult").hidden = false;
+      $("crossResult").innerHTML = '<div class="cross-verdict err">No Xylookup depth available to compare.</div>';
+      return;
+    }
+    const btn = $("crossCheck");
+    btn.disabled = true;
+    $("crossResult").hidden = false;
+    $("crossResult").innerHTML = '<div class="cross-verdict pending">Querying GEBCO…</div>';
+
+    let result;
+    try {
+      result = await fetchCrossCheckDepth(lastLat, lastLon);
+    } catch (e) {
+      $("crossResult").innerHTML = '<div class="cross-verdict err">Cross-check failed: ' + escapeHtml(e.message) + '</div>';
+      btn.disabled = false;
+      return;
+    }
+
+    const crossDepthM = result.depth;
+    const diff = Math.abs(lastXyDepthM - crossDepthM);
+    const ok = diff <= 100;
+
+    const xy = fmtDepthLabel(lastXyDepthM);
+    const cr = fmtDepthLabel(crossDepthM);
+    const shoreTxt = (lastShoreM !== null && isFinite(lastShoreM)) ? nf(lastShoreM / 1000, 2) + " km" : "—";
+
+    const verdict = ok
+      ? '<div class="cross-verdict ok">✓ Within 100 m tolerance — difference: ' + nf(diff, 1) + ' m</div>'
+      : '<div class="cross-verdict err">❌ MISMATCH IN INTERNAL DATABASE — difference: ' + nf(diff, 1) + ' m (tolerance: 100 m)</div>';
+
+    $("crossResult").innerHTML =
+      '<div class="cross-grid">' +
+        '<div class="cross-col">' +
+          '<div class="cross-title">Xylookup (OBIS)</div>' +
+          '<div class="cross-depth">' + xy.val + '</div>' +
+          '<div class="cross-unit">' + xy.unit + '</div>' +
+          '<div class="cross-sub">Distance to shore: ' + shoreTxt + '</div>' +
+        '</div>' +
+        '<div class="cross-col">' +
+          '<div class="cross-title">' + escapeHtml(result.sourceName) + '</div>' +
+          '<div class="cross-depth">' + cr.val + '</div>' +
+          '<div class="cross-unit">' + cr.unit + '</div>' +
+          '<div class="cross-sub">&nbsp;</div>' +
+        '</div>' +
+      '</div>' +
+      verdict;
+
+    btn.disabled = false;
   }
 
   /* ---------- events ---------- */
   $("go").addEventListener("click", lookup);
+  $("crossCheck").addEventListener("click", crossCheck);
+
   document.querySelectorAll('input[name="coordMode"]').forEach(function (radio) {
     radio.addEventListener("change", syncModeChange);
   });
