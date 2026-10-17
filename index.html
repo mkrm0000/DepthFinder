@@ -490,27 +490,17 @@
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
     try {
-        //console.log(text);
-      return parseElevation(JSON.parse(text));
+      z = parseElevation(JSON.parse(text));
+      return z;
     } catch (_) {
-      const n = parseFloat(text);
+      const n = parseElevation(JSON.parse(text));
       if (isFinite(n)) return n;
       throw new Error("Unparseable GEBCO response");
     }
   }
 
-  async function fetchOpenTopoData(lat, lon) {
-    const url = "https://api.opentopodata.org/v1/gebco2020?locations=" +
-                encodeURIComponent(lat) + "," + encodeURIComponent(lon);
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    const z = data && data.results && data.results[0] && data.results[0].elevation;
-    if (typeof z !== "number" || !isFinite(z)) throw new Error("No elevation in OpenTopoData response");
-    return z;
-  }
-
   function parseElevation(data) {
+    if (typeof data === "object") return parseInt(data.z[0]);
     if (typeof data === "number") return data;
     if (Array.isArray(data)) {
       if (!data.length) throw new Error("Empty response");
