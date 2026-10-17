@@ -2,7 +2,94 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- ── Primary SEO ───────────────────────────────────────────── -->
+  <meta name="description" content="Look up sea bed depth from latitude and longitude instantly. Free bathymetry tool with xylookup and GEBCO cross-check and distance to shore. No API key, no signup.">
+  <meta name="keywords" content="sea bed depth, ocean depth lookup, bathymetry, latitude longitude depth, GEBCO, nautical depth, sea floor depth, water depth calculator">
+  <meta name="author" content="Mokarrom Hossain">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://mkrm0000.github.io/DepthFinder/">
+
+  <!-- ── PWA / browser chrome ──────────────────────────────────── -->
+  <meta name="application-name" content="Sea Bed Depth Lookup">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="color-scheme" content="dark">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+
+  
+  <!-- ── Icons ─────────────────────────────────────────────────── -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+
+
+  <!-- ── Open Graph (Facebook, LinkedIn, Slack, WhatsApp…) ──────── -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sea Bed Depth Lookup">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://mkrm0000.github.io/DepthFinder/">
+  <meta property="og:title" content="Sea Bed Depth Lookup — Free Ocean Depth from Coordinates">
+  <meta property="og:description" content="Enter any latitude and longitude to get sea bed depth in meters, plus distance to shore. Cross-checks against GEBCO with a ±100 m tolerance. Free, no API key.">
+  <meta property="og:image" content="https://mkrm0000.github.io/DepthFinder/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Sea Bed Depth Lookup — a dark blue interface showing ocean depth in meters for a set of coordinates">
+
+  <!-- ── Twitter / X ───────────────────────────────────────────── -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sea Bed Depth Lookup — Free Ocean Depth from Coordinates">
+  <meta name="twitter:description" content="Enter any lat/lon to get sea bed depth in meters and distance to shore. GEBCO cross-check included. Free, no API key.">
+  <meta name="twitter:image" content="https://mkrm0000.github.io/DepthFinder/og-image.png">
+  <meta name="twitter:image:alt" content="Sea Bed Depth Lookup interface">
+
+  <!-- ── Performance: warm up the APIs we call ─────────────────── -->
+  <link rel="preconnect" href="https://api.obis.org">
+  <link rel="preconnect" href="https://api.odb.ntu.edu.tw">
+  <link rel="dns-prefetch" href="https://www.google.com">
+
+  <!-- ── Structured data ───────────────────────────────────────── -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Sea Bed Depth Lookup",
+    "url": "https://mkrm0000.github.io/DepthFinder/",
+    "description": "Free tool to look up sea bed depth from latitude and longitude, with distance to shore and a GEBCO cross-check.",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Any (web browser)",
+    "browserRequirements": "Requires JavaScript",
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": [
+      "Sea bed depth from decimal degrees or DMS coordinates",
+      "Distance to nearest shore",
+      "GEBCO cross-check with ±100 m tolerance",
+      "No API key or signup required"
+    ],
+    "creator": {
+      "@type": "Person",
+      "name": "Mokarrom Hossain",
+      "url": "https://mkrm0000.github.io/DepthFinder/"
+    }
+  }
+  </script>
+
+
+
+
+
+
+
+
 <title>Sea Bed Depth Lookup</title>
 <style>
   :root{

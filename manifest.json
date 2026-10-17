@@ -1,0 +1,26 @@
+{
+  "name": "Sea Bed Depth Lookup",
+  "short_name": "Sea Depth",
+  "description": "Free sea bed depth lookup from latitude and longitude, with GEBCO cross-check.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["utilities", "education"],
+  "icons": [
+    {
+      "src": "favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
